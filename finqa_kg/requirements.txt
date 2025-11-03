@@ -1,0 +1,71 @@
+# FinQA Knowledge Graph - Requirements
+# Python 3.8+
+
+# ====================================
+# CRITICAL: Install in this ORDER!
+# ====================================
+# Step 1: Core numerical libraries (MUST be first!)
+numpy==1.24.3
+scipy==1.10.1
+
+# Step 2: NLP Core - Spacy
+spacy==3.7.2
+spacy-transformers==1.3.4
+# After install, run: python -m spacy download en_core_web_trf
+
+# Step 3: Deep Learning & Transformers
+torch>=2.0.0
+transformers>=4.30.0
+sentence-transformers>=2.2.2
+
+# ====================================
+# Main Dependencies
+# ====================================
+
+# Graph & Network Analysis
+networkx>=3.0
+
+# Data Processing
+pandas>=2.0.0
+tqdm>=4.65.0
+
+# Visualization
+matplotlib>=3.7.0
+plotly>=5.14.0
+kaleido>=0.2.1  # For static image export
+
+# Testing & Development
+pytest>=7.3.0
+pytest-asyncio>=0.21.0
+
+# Performance Monitoring (optional)
+psutil>=5.9.0
+memory-profiler>=0.61.0
+
+# ====================================
+# Model-specific Dependencies
+# ====================================
+
+# Tokenization
+tokenizers>=0.13.0
+
+# Additional utilities
+python-dateutil>=2.8.0
+regex>=2023.5.0
+
+# ====================================
+# Optional: For GPU Support
+# ====================================
+# If you have CUDA, install:
+# torch with CUDA: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# Then uncomment below:
+# accelerate>=0.20.0
+
+# ====================================
+# Financial NLP Models (auto-downloaded)
+# ====================================
+# These models are downloaded automatically when first used:
+# - yiyanghkust/finbert-pretrained-ner (Financial NER)
+# - deepset/roberta-base-squad2 (Question Answering)
+# - sentence-transformers/all-MiniLM-L6-v2 (Embeddings)
+# - facebook/bart-large-mnli (Zero-shot classification)

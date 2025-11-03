@@ -1,0 +1,22 @@
+{
+    "id": "test_doc_1",
+    "filename": "test.pdf",
+    "pre_text": [
+        "Company XYZ reported strong financial results for Q3 2023.",
+        "Revenue increased by 15% to $1.2 million."
+    ],
+    "post_text": [
+        "Operating costs decreased by 5% to $800,000.",
+        "The company expects continued growth in Q4."
+    ],
+    "table": [
+        ["Metric", "Q3 2022", "Q3 2023", "Change"],
+        ["Revenue", "$1.0M", "$1.2M", "+15%"],
+        ["Operating Costs", "$842K", "$800K", "-5%"],
+        ["Net Profit", "$158K", "$400K", "+153%"]
+    ],
+    "qa": {
+        "question": "What was the revenue growth percentage?",
+        "answer": "15%"
+    }
+}
