@@ -97,6 +97,82 @@ class ProgramSynthesizer:
             }
         }
     
+    def _retrieve_from_table(self, kg: nx.MultiDiGraph, 
+                            row_keywords: List[str], 
+                            col_keywords: List[str] = None) -> List[float]:
+        """
+        Table-aware retrieval: tìm values từ table based on row/column labels
+        
+        CRITICAL FIX: Search 'entity' nodes (with proper context), not 'cell' nodes (empty context)
+        
+        Args:
+            kg: Knowledge Graph
+            row_keywords: Keywords to match row labels (e.g., ['revenue', '2007'])
+            col_keywords: Keywords to match column headers (optional)
+            
+        Returns:
+            List of matching cell values
+        """
+        print(f"\n  [Table Query] row_keywords={row_keywords}, col_keywords={col_keywords}")
+        
+        results = []
+        
+        # CRITICAL FIX: Search entity nodes (which have proper context),
+        # not cell nodes (which have empty text/context)
+        for node_id, node_data in kg.nodes(data=True):
+            if node_data.get('type') == 'entity':
+                # Get entity context - must be from table
+                context = node_data.get('context', '').lower()
+                
+                # CRITICAL: Only consider entities from tables
+                if 'table[' not in context:
+                    continue
+                
+                entity_text = node_data.get('text', '').lower()
+                entity_value = node_data.get('value')
+                
+                if entity_value is None:
+                    continue
+                
+                # Score based on keyword matches in text + context
+                score = 0
+                matched_keywords = []
+                
+                for keyword in row_keywords:
+                    keyword_lower = keyword.lower()
+                    if keyword_lower in entity_text or keyword_lower in context:
+                        score += 10
+                        matched_keywords.append(keyword)
+                
+                if col_keywords:
+                    for keyword in col_keywords:
+                        keyword_lower = keyword.lower()
+                        if keyword_lower in entity_text or keyword_lower in context:
+                            score += 5
+                            matched_keywords.append(keyword)
+                
+                if score > 0:
+                    results.append({
+                        'value': entity_value,
+                        'text': entity_text,
+                        'score': score,
+                        'matched': matched_keywords,
+                        'context': context
+                    })
+        
+        # Sort by score
+        results.sort(key=lambda x: x['score'], reverse=True)
+        
+        if results:
+            print(f"  Found {len(results)} table cells")
+            for i, r in enumerate(results[:3]):
+                print(f"    {i+1}. value={r['value']}, score={r['score']}, "
+                      f"matched={r['matched']}, text={r['text'][:60]}")
+        
+        # CRITICAL FIX: Return full dicts, not just values
+        # Each dict has: 'value', 'text', 'score', 'matched', 'context'
+        return results
+    
     def synthesize(self, 
                   question_analysis: QuestionAnalysis,
                   kg: nx.MultiDiGraph,
@@ -170,46 +246,186 @@ class ProgramSynthesizer:
         - Argument order logic
         - Context matching
         """
+        # DEBUG LOGGING
+        print(f"\n[DEBUG] Argument Retrieval:")
+        print(f"  Question: {qa.question}")
+        print(f"  Type: {qa.question_type}")
+        print(f"  Required Args: {required_args}")
+        print(f"  Entities mentioned: {qa.entities_mentioned}")
+        print(f"  Temporal: {qa.temporal_entities}")
+        print(f"  Numbers: {qa.numbers_mentioned}")
+        print(f"  Entity Index sizes: by_text={len(entity_index['by_text'])}, "
+              f"by_value={len(entity_index['by_value'])}, by_label={len(entity_index['by_label'])}")
+        
         arguments = {}
         
-        # Special handling for direct_lookup: tìm trong context
+        # PHASE 2.1: TRY TABLE-AWARE RETRIEVAL FIRST
+        # For questions mentioning specific years/dates with financial concepts
+        key_entities = [e for e in qa.entities_mentioned 
+                      if not e.isdigit() and len(e) > 2]
+        
+        if qa.temporal_entities and key_entities:
+            # Try table query with keywords
+            table_keywords = key_entities + qa.temporal_entities
+            table_values = self._retrieve_from_table(kg, table_keywords)
+            
+            if table_values:
+                print(f"  ✓ Table query found {len(table_values)} values")
+                # CRITICAL FIX: Use full table_values dict (includes context),
+                # not just values
+                # table_values is already list of dicts with 'value', 'text', 'score', 'context', 'matched'
+                # Just boost their scores
+                for tv in table_values[:10]:
+                    tv['score'] = 100  # Boost table values
+                    tv['type'] = 'table'
+                all_candidates = table_values[:10]
+                
+                # Assign arguments based on question type
+                if qa.question_type == 'percentage_change' and len(table_values) >= 2:
+                    # For percentage_change: try to find old and new values
+                    # Use temporal ordering
+                    if len(qa.temporal_entities) >= 2:
+                        sorted_temporal = sorted(qa.temporal_entities)
+                        # Query specifically for each year
+                        old_values = self._retrieve_from_table(kg, key_entities + [sorted_temporal[0]])
+                        new_values = self._retrieve_from_table(kg, key_entities + [sorted_temporal[-1]])
+                        
+                        if old_values and new_values:
+                            # CRITICAL FIX: old_values and new_values are dicts with 'value', 'context', etc.
+                            # Not just values!
+                            arguments['old'] = old_values[0] if isinstance(old_values[0], dict) else {
+                                'value': old_values[0],
+                                'text': f'table_{sorted_temporal[0]}',
+                                'score': 100,
+                                'context': f'Table query: {sorted_temporal[0]}'
+                            }
+                            arguments['new'] = new_values[0] if isinstance(new_values[0], dict) else {
+                                'value': new_values[0],
+                                'text': f'table_{sorted_temporal[-1]}',
+                                'score': 100,
+                                'context': f'Table query: {sorted_temporal[-1]}'
+                            }
+                            print(f"  ✓ Table query assigned: old={arguments['old']['value']} ({sorted_temporal[0]}), "
+                                  f"new={arguments['new']['value']} ({sorted_temporal[-1]})")
+                            return arguments
+                
+                # For other types, continue with context-based
+                print(f"  → Continuing with context-based retrieval...")
+        
+        # PHASE 2.2: UNIVERSAL CONTEXT-BASED RETRIEVAL
+        # Works for all question types by scoring candidates based on context match
+        
+        print(f"\n  [Context-Based Retrieval]")
+        print(f"  Key entities: {key_entities}")
+        
+        # Collect all candidates with scoring
+        all_candidates = []
+        for node_id, node_data in kg.nodes(data=True):
+            if node_data.get('type') in ['entity', 'cell'] and node_data.get('value') is not None:
+                context = node_data.get('context', '').lower()
+                
+                # IMPROVED SCORING LOGIC
+                match_score = 0
+                
+                # Base score: key entity matches
+                for entity in key_entities:
+                    if entity.lower() in context:
+                        match_score += 10
+                        
+                        # Proximity bonus
+                        value_str = str(node_data['value'])
+                        if value_str in context:
+                            entity_pos = context.find(entity.lower())
+                            value_pos = context.find(value_str)
+                            if abs(entity_pos - value_pos) < 50:
+                                match_score += 5
+                
+                # Temporal match bonus
+                for temporal in qa.temporal_entities:
+                    if temporal in context:
+                        match_score += 2
+                
+                # Financial term label bonus
+                if node_data.get('label') in ['EXPENSE', 'REVENUE', 'INCOME', 'MONEY', 'EQUITY', 'ASSET']:
+                    match_score += 3
+                
+                if match_score > 0:
+                    all_candidates.append({
+                        'value': node_data['value'],
+                        'text': node_data.get('text', str(node_data['value'])),
+                        'node_id': node_id,
+                        'context': context,
+                        'score': match_score,
+                        'type': node_data.get('type'),
+                        'label': node_data.get('label', '')
+                    })
+        
+        print(f"  Found {len(all_candidates)} candidates")
+        
+        # Sort candidates by score
+        all_candidates.sort(key=lambda x: x['score'], reverse=True)
+        
+        if all_candidates:
+            print(f"  Top 5 candidates:")
+            for i, cand in enumerate(all_candidates[:5]):
+                print(f"    {i+1}. value={cand['value']}, score={cand['score']}, "
+                      f"label={cand.get('label')}, context={cand['context'][:80]}...")
+        
+        # ASSIGN ARGUMENTS BASED ON QUESTION TYPE
         if qa.question_type == 'direct_lookup':
-            # Extract key entities từ question (không phải year)
-            key_entities = [e for e in qa.entities_mentioned 
-                          if not e.isdigit() and len(e) > 3]
-            
-            # Search trong KG cho nodes có context chứa các entities này
-            best_candidates = []
-            for node_id, node_data in kg.nodes(data=True):
-                if node_data.get('type') == 'entity' and node_data.get('value') is not None:
-                    context = node_data.get('context', '').lower()
-                    
-                    # Count how many key entities appear in context
-                    match_score = sum(1 for entity in key_entities 
-                                    if entity.lower() in context)
-                    
-                    # Also check for temporal match
-                    for temporal in qa.temporal_entities:
-                        if temporal in context:
-                            match_score += 2  # Bonus for temporal match
-                    
-                    if match_score > 0:
-                        best_candidates.append({
-                            'value': node_data['value'],
-                            'text': node_data.get('text', str(node_data['value'])),
-                            'node_id': node_id,
-                            'context': node_data.get('context', ''),
-                            'score': match_score
-                        })
-            
-            # Sort by score and take best
-            if best_candidates:
-                best_candidates.sort(key=lambda x: x['score'], reverse=True)
-                if 'value' in required_args:
-                    arguments['value'] = best_candidates[0]
-                elif required_args:
-                    arguments[required_args[0]] = best_candidates[0]
-            
+            # Single value needed
+            if all_candidates and 'value' in required_args:
+                arguments['value'] = all_candidates[0]
+                print(f"  Selected for 'value': {arguments['value']['value']}")
+        
+        elif qa.question_type in ['percentage_of', 'ratio']:
+            # Need 2 values: part/whole or numerator/denominator
+            if len(all_candidates) >= 2:
+                # Use temporal entities to distinguish
+                if qa.temporal_entities:
+                    # Filter candidates by temporal match
+                    temporal_text = qa.temporal_entities[0] if qa.temporal_entities else ''
+                    relevant = [c for c in all_candidates if temporal_text in c['context']]
+                    if len(relevant) >= 2:
+                        all_candidates = relevant
+                
+                # Assign based on size/label heuristics
+                if 'part' in required_args and 'whole' in required_args:
+                    # Smaller value is typically 'part', larger is 'whole'
+                    sorted_by_value = sorted(all_candidates[:5], key=lambda x: x['value'])
+                    arguments['part'] = sorted_by_value[0]
+                    arguments['whole'] = sorted_by_value[-1]
+                    print(f"  Selected 'part': {arguments['part']['value']}, 'whole': {arguments['whole']['value']}")
+                
+                elif 'numerator' in required_args and 'denominator' in required_args:
+                    # Similar logic
+                    arguments['numerator'] = all_candidates[0]
+                    arguments['denominator'] = all_candidates[1] if len(all_candidates) > 1 else all_candidates[0]
+                    print(f"  Selected 'numerator': {arguments['numerator']['value']}, 'denominator': {arguments['denominator']['value']}")
+        
+        elif qa.question_type == 'percentage_change':
+            # Need 2 values with temporal ordering: old and new
+            if len(qa.temporal_entities) >= 2 and len(all_candidates) >= 2:
+                sorted_temporal = sorted(qa.temporal_entities)
+                print(f"  Temporal ordering: {sorted_temporal[0]} (old) → {sorted_temporal[-1]} (new)")
+                
+                # Find candidates matching each temporal
+                old_candidates = [c for c in all_candidates if sorted_temporal[0] in c['context']]
+                new_candidates = [c for c in all_candidates if sorted_temporal[-1] in c['context']]
+                
+                if old_candidates and new_candidates:
+                    arguments['old'] = old_candidates[0]
+                    arguments['new'] = new_candidates[0]
+                    print(f"  Selected 'old': {arguments['old']['value']} ({sorted_temporal[0]}), "
+                          f"'new': {arguments['new']['value']} ({sorted_temporal[-1]})")
+                elif len(all_candidates) >= 2:
+                    # Fallback: use top 2
+                    arguments['old'] = all_candidates[1]
+                    arguments['new'] = all_candidates[0]
+                    print(f"  Fallback - 'old': {arguments['old']['value']}, 'new': {arguments['new']['value']}")
+        
+        # If we got arguments, return them
+        if arguments:
             return arguments
         
         # 1. Search by entities mentioned

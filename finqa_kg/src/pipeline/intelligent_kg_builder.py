@@ -166,7 +166,7 @@ class IntelligentKGBuilder:
                     start=ent.start_char,
                     end=ent.end_char,
                     value=num_value,
-                    context=text[max(0, ent.start_char-50):min(len(text), ent.end_char+50)],
+                    context=text[max(0, ent.start_char-200):min(len(text), ent.end_char+200)],
                     source_type='text',
                     source_id=text_node_id
                 )
@@ -184,6 +184,56 @@ class IntelligentKGBuilder:
                            relation='contains_entity',
                            start=ent.start_char,
                            end=ent.end_char)
+            
+            # CRITICAL FIX: Extract financial terms using pattern matching
+            # Spacy NER misses domain-specific financial terms
+            financial_patterns = {
+                r'(?:total\s+)?operating\s+expenses?': 'EXPENSE',
+                r'(?:net\s+)?revenue': 'REVENUE',
+                r'(?:net\s+)?income': 'INCOME',
+                r'equity\s+awards?': 'EQUITY',
+                r'cash\s+flows?': 'CASH_FLOW',
+                r'interest\s+expense': 'EXPENSE',
+                r'(?:total\s+)?assets?': 'ASSET',
+                r'(?:total\s+)?liabilities': 'LIABILITY',
+                r'earnings?\s+per\s+share': 'EPS',
+                r'stockholders?\s+equity': 'EQUITY',
+            }
+            
+            for pattern, label in financial_patterns.items():
+                for match in re.finditer(pattern, text, re.IGNORECASE):
+                    match_text = match.group(0)
+                    start_char = match.start()
+                    end_char = match.end()
+                    
+                    # Extract nearby numbers (within 100 chars after the term)
+                    context_after = text[end_char:min(len(text), end_char+100)]
+                    numbers = re.findall(r'\$?\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)', context_after)
+                    
+                    # Create entity for the financial term with associated value
+                    entity_id = f"entity_{self.entity_counter}"
+                    self.entity_counter += 1
+                    
+                    # Use first number found as the value
+                    num_value = None
+                    if numbers:
+                        try:
+                            num_value = float(numbers[0].replace(',', ''))
+                        except:
+                            pass
+                    
+                    # Create entity node
+                    kg.add_node(entity_id,
+                               type='entity',
+                               text=match_text,
+                               label=label,
+                               value=num_value,
+                               context=text[max(0, start_char-100):min(len(text), end_char+100)])
+                    
+                    kg.add_edge(text_node_id, entity_id,
+                               relation='contains_financial_term',
+                               start=start_char,
+                               end=end_char)
             
             # Extract relations qua dependency parsing
             for token in doc:
@@ -258,13 +308,23 @@ class IntelligentKGBuilder:
                     entity_id = f"entity_{self.entity_counter}"
                     self.entity_counter += 1
                     
+                    # CRITICAL FIX: Include BOTH row label AND column header in context
+                    # This allows searching for "revenue" to find values like 991.1
+                    context_parts = []
+                    if row_label:
+                        context_parts.append(f"Row: {row_label}")
+                    if col_idx < len(headers) and headers[col_idx]:
+                        context_parts.append(f"Col: {headers[col_idx]}")
+                    context_str = " | ".join(context_parts) if context_parts else ""
+                    full_context = f"Table[{row_idx},{col_idx}]: {context_str} = {cell_value}"
+                    
                     entity = Entity(
                         text=ent.text,
                         label=ent.label_,
                         start=0,
                         end=len(ent.text),
                         value=self._extract_number(ent.text),
-                        context=f"Table[{row_idx},{col_idx}]: {headers[col_idx] if col_idx < len(headers) else ''} = {cell_value}",
+                        context=full_context,
                         source_type='table',
                         source_id=cell_id
                     )
@@ -411,7 +471,9 @@ class IntelligentKGBuilder:
         }
         
         for node_id, data in kg.nodes(data=True):
-            if data.get('type') == 'entity':
+            # CRITICAL FIX: Index both 'entity' AND 'cell' types!
+            # This allows table values to be searchable
+            if data.get('type') in ['entity', 'cell']:
                 text = data.get('text', '').lower()
                 value = data.get('value')
                 label = data.get('label', '')
