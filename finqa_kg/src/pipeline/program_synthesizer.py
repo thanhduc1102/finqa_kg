@@ -42,8 +42,8 @@ class ProgramSynthesizer:
         """
         return {
             'percentage_change': {
-                'template': 'multiply(divide(subtract(#new, #old), #old), const_100)',
-                'description': 'Percentage change = ((new - old) / old) * 100',
+                'template': 'divide(subtract(#new, #old), #old)',
+                'description': 'Percentage change = (new - old) / old (in decimal form)',
                 'required_args': ['new', 'old'],
                 'arg_types': ['number', 'number']
             },
@@ -78,8 +78,8 @@ class ProgramSynthesizer:
                 'arg_types': ['number', 'number']
             },
             'percentage_of': {
-                'template': 'multiply(divide(#part, #whole), const_100)',
-                'description': 'Percentage = (part / whole) * 100',
+                'template': 'divide(#part, #whole)',
+                'description': 'Percentage = part / whole (in decimal form)',
                 'required_args': ['part', 'whole'],
                 'arg_types': ['number', 'number']
             },
@@ -99,7 +99,8 @@ class ProgramSynthesizer:
     
     def _retrieve_from_table(self, kg: nx.MultiDiGraph, 
                             row_keywords: List[str], 
-                            col_keywords: List[str] = None) -> List[float]:
+                            col_keywords: List[str] = None,
+                            exclude_labels: List[str] = None) -> List[float]:
         """
         Table-aware retrieval: tìm values từ table based on row/column labels
         
@@ -109,6 +110,7 @@ class ProgramSynthesizer:
             kg: Knowledge Graph
             row_keywords: Keywords to match row labels (e.g., ['revenue', '2007'])
             col_keywords: Keywords to match column headers (optional)
+            exclude_labels: Entity labels to exclude (e.g., ['DATE'] to filter out years)
             
         Returns:
             List of matching cell values
@@ -116,11 +118,17 @@ class ProgramSynthesizer:
         print(f"\n  [Table Query] row_keywords={row_keywords}, col_keywords={col_keywords}")
         
         results = []
+        exclude_labels = exclude_labels or []
         
         # CRITICAL FIX: Search entity nodes (which have proper context),
         # not cell nodes (which have empty text/context)
         for node_id, node_data in kg.nodes(data=True):
             if node_data.get('type') == 'entity':
+                # Filter by label if specified
+                entity_label = node_data.get('label', '')
+                if entity_label in exclude_labels:
+                    continue
+                
                 # Get entity context - must be from table
                 context = node_data.get('context', '').lower()
                 
@@ -209,6 +217,12 @@ class ProgramSynthesizer:
         if not arguments:
             return self._fallback_synthesis(question_analysis, kg, entity_index)
         
+        # PHASE 4 FIX: If direct_lookup found a percentage, switch to division
+        if q_type == 'direct_lookup' and 'numerator' in arguments and 'denominator' in arguments:
+            print(f"\n  ⚙️  Switching from direct_lookup to division (percentage-based calculation)")
+            template = 'divide(#numerator, #denominator)'
+            required_args = ['numerator', 'denominator']
+        
         # 3. Generate program string
         program, placeholders = self._generate_program_string(
             template,
@@ -287,8 +301,12 @@ class ProgramSynthesizer:
                     if len(qa.temporal_entities) >= 2:
                         sorted_temporal = sorted(qa.temporal_entities)
                         # Query specifically for each year
-                        old_values = self._retrieve_from_table(kg, key_entities + [sorted_temporal[0]])
-                        new_values = self._retrieve_from_table(kg, key_entities + [sorted_temporal[-1]])
+                        # CRITICAL FIX: Exclude DATE labels to filter out year values (2007, 2008)
+                        # when looking for financial amounts (revenues, expenses, etc.)
+                        old_values = self._retrieve_from_table(kg, key_entities + [sorted_temporal[0]], 
+                                                              exclude_labels=['DATE'])
+                        new_values = self._retrieve_from_table(kg, key_entities + [sorted_temporal[-1]],
+                                                              exclude_labels=['DATE'])
                         
                         if old_values and new_values:
                             # CRITICAL FIX: old_values and new_values are dicts with 'value', 'context', etc.
@@ -322,6 +340,13 @@ class ProgramSynthesizer:
         all_candidates = []
         for node_id, node_data in kg.nodes(data=True):
             if node_data.get('type') in ['entity', 'cell'] and node_data.get('value') is not None:
+                entity_label = node_data.get('label', '')
+                
+                # PHASE 3 FIX: Filter out DATE entities for most question types
+                # (except percentage_change which has special handling)
+                if qa.question_type != 'percentage_change' and entity_label == 'DATE':
+                    continue
+                
                 context = node_data.get('context', '').lower()
                 
                 # IMPROVED SCORING LOGIC
@@ -345,9 +370,14 @@ class ProgramSynthesizer:
                     if temporal in context:
                         match_score += 2
                 
+                # PHASE 3 FIX: Enhanced label-based scoring
                 # Financial term label bonus
-                if node_data.get('label') in ['EXPENSE', 'REVENUE', 'INCOME', 'MONEY', 'EQUITY', 'ASSET']:
-                    match_score += 3
+                if entity_label in ['EXPENSE', 'REVENUE', 'INCOME', 'MONEY', 'EQUITY', 'ASSET']:
+                    match_score += 5  # Increased from 3 to 5
+                
+                # Penalize PERCENT for non-percentage questions
+                if entity_label == 'PERCENT' and qa.question_type not in ['percentage_of', 'percentage_change']:
+                    match_score -= 10
                 
                 if match_score > 0:
                     all_candidates.append({
@@ -375,27 +405,102 @@ class ProgramSynthesizer:
         if qa.question_type == 'direct_lookup':
             # Single value needed
             if all_candidates and 'value' in required_args:
-                arguments['value'] = all_candidates[0]
-                print(f"  Selected for 'value': {arguments['value']['value']}")
+                # PHASE 4 FIX: Check if the value has an associated percentage
+                # If question asks for "total X" but table shows "Y (Z% of total X)",
+                # we need to calculate: Y / Z% = total X
+                candidate = all_candidates[0]
+                
+                # Look for percentage in same context (same row in table)
+                percentage_value = self._find_associated_percentage(
+                    kg, candidate, qa
+                )
+                
+                if percentage_value:
+                    # Found percentage - need division instead of direct lookup
+                    print(f"  ⚠️  Found associated percentage: {percentage_value}%")
+                    print(f"  Converting direct_lookup to division: {candidate['value']} / {percentage_value}%")
+                    
+                    # Change to division template
+                    arguments['numerator'] = candidate
+                    arguments['denominator'] = {
+                        'value': percentage_value / 100.0,  # Convert percentage to decimal
+                        'text': f'{percentage_value}%',
+                        'score': 100,
+                        'context': f'Percentage from same row as {candidate["value"]}'
+                    }
+                    print(f"  Calculated denominator: {arguments['denominator']['value']}")
+                else:
+                    # Normal direct lookup
+                    arguments['value'] = candidate
+                    print(f"  Selected for 'value': {arguments['value']['value']}")
         
         elif qa.question_type in ['percentage_of', 'ratio']:
             # Need 2 values: part/whole or numerator/denominator
             if len(all_candidates) >= 2:
-                # Use temporal entities to distinguish
+                # PHASE 3 FIX: Enhanced temporal filtering
+                # Use the LONGEST temporal entity (most specific, e.g., 'dec 29 2012' not just '20')
                 if qa.temporal_entities:
-                    # Filter candidates by temporal match
-                    temporal_text = qa.temporal_entities[0] if qa.temporal_entities else ''
-                    relevant = [c for c in all_candidates if temporal_text in c['context']]
+                    # Sort by length to get most specific temporal
+                    sorted_temporal = sorted(qa.temporal_entities, key=len, reverse=True)
+                    temporal_text = sorted_temporal[0]
+                    
+                    # CRITICAL FIX: Normalize temporal text for matching
+                    # "dec . 29 2012" → "dec292012" (remove spaces and punctuation)
+                    import re
+                    normalized_temporal = re.sub(r'[\s\.\,\-]', '', temporal_text.lower())
+                    
+                    # Filter candidates by temporal match - be more strict
+                    # Remove generic matches like '20' which matches '2012', '2013', '2020', etc.
+                    relevant = []
+                    for c in all_candidates:
+                        # Skip if only matches on very short strings like '20'
+                        if len(normalized_temporal) <= 2:
+                            continue
+                        
+                        # Normalize context for comparison
+                        normalized_context = re.sub(r'[\s\.\,\-]', '', c['context'].lower())
+                        
+                        if normalized_temporal in normalized_context:
+                            relevant.append(c)
+                    
                     if len(relevant) >= 2:
                         all_candidates = relevant
+                        print(f"  Filtered to {len(relevant)} candidates matching '{temporal_text}' (normalized: '{normalized_temporal}')")
                 
-                # Assign based on size/label heuristics
+                # PHASE 3 FIX: Enhanced assignment with context-based matching
                 if 'part' in required_args and 'whole' in required_args:
-                    # Smaller value is typically 'part', larger is 'whole'
-                    sorted_by_value = sorted(all_candidates[:5], key=lambda x: x['value'])
-                    arguments['part'] = sorted_by_value[0]
-                    arguments['whole'] = sorted_by_value[-1]
-                    print(f"  Selected 'part': {arguments['part']['value']}, 'whole': {arguments['whole']['value']}")
+                    # Try to match question keywords to context
+                    # E.g., "available-for-sale" in question → find entity with "available" in row label
+                    part_candidates = []
+                    whole_candidates = []
+                    
+                    for c in all_candidates:
+                        context_lower = c['context'].lower()
+                        # Look for 'part' indicators: specific item names
+                        # vs 'whole' indicators: 'total', 'sum', 'all'
+                        if any(word in context_lower for word in ['total', 'sum', 'all']):
+                            whole_candidates.append(c)
+                        else:
+                            part_candidates.append(c)
+                    
+                    # If we found clear part/whole distinction, use it
+                    if part_candidates and whole_candidates:
+                        # Take highest-scoring from each group
+                        arguments['part'] = part_candidates[0]
+                        arguments['whole'] = whole_candidates[0]
+                        print(f"  Context-based: 'part': {arguments['part']['value']}, 'whole': {arguments['whole']['value']}")
+                    else:
+                        # Fallback: Size-based heuristic
+                        # But filter out extreme outliers first
+                        values = [c['value'] for c in all_candidates[:10]]
+                        median_val = sorted(values)[len(values)//2]
+                        # Remove values < 10% of median (likely erroneous)
+                        filtered = [c for c in all_candidates[:10] if c['value'] >= median_val * 0.1]
+                        
+                        sorted_by_value = sorted(filtered, key=lambda x: x['value'])
+                        arguments['part'] = sorted_by_value[0]
+                        arguments['whole'] = sorted_by_value[-1]
+                        print(f"  Size-based: 'part': {arguments['part']['value']}, 'whole': {arguments['whole']['value']}")
                 
                 elif 'numerator' in required_args and 'denominator' in required_args:
                     # Similar logic
@@ -600,6 +705,81 @@ class ProgramSynthesizer:
             explanation += f"(from: {arg_data['context'][:100]}...)\n"
         
         return explanation
+    
+    def _find_associated_percentage(self,
+                                    kg: nx.MultiDiGraph,
+                                    candidate: Dict,
+                                    qa: QuestionAnalysis) -> float | None:
+        """
+        PHASE 4: Find percentage associated with a value in the same row.
+        
+        This handles cases like:
+        - Question: "what was the total operating expenses in 2018?"
+        - Table shows: "fuel expense: $9896 (23.6% of total operating expenses)"
+        - Need to calculate: 9896 / 0.236 = 41932 (the total)
+        
+        Args:
+            kg: Knowledge graph
+            candidate: The candidate dict with 'value', 'context', 'node_id'
+            qa: Question analysis
+            
+        Returns:
+            Percentage value (e.g., 23.6), or None if not found
+        """
+        # Strategy: Look for PERCENT entities in the same row
+        # Check if contexts share the same "Row: X" marker
+        
+        context = candidate.get('context', '').lower()
+        value_str = str(candidate['value'])
+        
+        # Extract row identifier from context (e.g., "Row: 2018")
+        import re
+        row_match = re.search(r'row:\s*([^|]+)', context)
+        if not row_match:
+            return None  # No row info, can't match
+        
+        candidate_row = row_match.group(1).strip()
+        
+        # Look for PERCENT entities in the same row
+        for node_id, node_data in kg.nodes(data=True):
+            if node_data.get('type') not in ['entity', 'cell']:
+                continue
+                
+            # Check if it's a PERCENT entity
+            if node_data.get('label') != 'PERCENT':
+                continue
+            
+            # Get this node's context
+            node_context = node_data.get('context', '').lower()
+            
+            # Check if same row
+            node_row_match = re.search(r'row:\s*([^|]+)', node_context)
+            if node_row_match:
+                node_row = node_row_match.group(1).strip()
+                
+                if node_row == candidate_row:
+                    # Same row! This is likely the associated percentage
+                    percentage = node_data.get('value')
+                    if percentage:
+                        print(f"    ✓ Found percentage {percentage}% in same row (Row: {candidate_row})")
+                        return percentage
+        
+        return None
+    
+    def _contexts_overlap(self, context1: str, context2: str, threshold: float = 0.3) -> bool:
+        """Check if two contexts have significant overlap"""
+        # Simple word-based overlap
+        words1 = set(context1.split())
+        words2 = set(context2.split())
+        
+        if not words1 or not words2:
+            return False
+        
+        intersection = words1.intersection(words2)
+        union = words1.union(words2)
+        
+        overlap = len(intersection) / len(union) if union else 0
+        return overlap >= threshold
     
     def _calculate_confidence(self, arguments: Dict, required_args: List[str]) -> float:
         """Calculate confidence score"""
