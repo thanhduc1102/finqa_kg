@@ -142,6 +142,19 @@ class QuestionAnalyzer:
                     'What is the absolute value of X?'
                 ]
             },
+            'comparison': {
+                'keywords': ['exceed', 'greater than', 'less than', 'more than', 
+                            'higher than', 'lower than', 'did', 'was', 'were',
+                            'compare', 'comparison'],
+                'operations': ['greater', 'less', 'equal'],
+                'formula': 'a > b or a < b or a == b',
+                'argument_order': ['value1', 'value2'],
+                'examples': [
+                    'Did X exceed Y?',
+                    'Was X greater than Y?',
+                    'Did X increase more than Y?'
+                ]
+            },
             'direct_lookup': {
                 'keywords': ['what is', 'what was', 'what were', 'how much', 'how many',
                             'what are', "what's", 'value of'],
@@ -217,6 +230,18 @@ class QuestionAnalyzer:
         """
         best_match = None
         best_score = 0
+        
+        # NEW: Early detection for comparison questions
+        comparison_patterns = [
+            r'\bdid\b.*\bexceed\b',
+            r'\bwas\b.*\bgreater than\b',
+            r'\bwere\b.*\bmore than\b',
+            r'\bdid\b.*\bmore than\b',
+            r'\bexceed\b',
+            r'\bgreater than\b'
+        ]
+        if any(re.search(pattern, question.lower()) for pattern in comparison_patterns):
+            return 'comparison', self.question_patterns.get('comparison', {})
         
         for q_type, pattern in self.question_patterns.items():
             score = 0

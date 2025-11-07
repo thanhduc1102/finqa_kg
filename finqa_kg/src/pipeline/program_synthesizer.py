@@ -94,6 +94,12 @@ class ProgramSynthesizer:
                 'description': 'Convert value using factor',
                 'required_args': ['value', 'conversion_factor'],
                 'arg_types': ['number', 'number']
+            },
+            'comparison': {
+                'template': 'greater(#value1, #value2)',
+                'description': 'Compare two values (returns 1 if value1 > value2, else 0)',
+                'required_args': ['value1', 'value2'],
+                'arg_types': ['number', 'number']
             }
         }
     
@@ -196,6 +202,10 @@ class ProgramSynthesizer:
         Returns:
             ProgramSynthesisResult
         """
+        # CRITICAL FIX: Store kg and entity_index for use in helper methods
+        self.kg = kg
+        self.entity_index = entity_index
+        
         q_type = question_analysis.question_type
         
         # 1. Get template
@@ -214,8 +224,21 @@ class ProgramSynthesizer:
             required_args
         )
         
+        # CRITICAL FIX: Check if we have enough arguments
+        print(f"  Retrieved arguments: {list(arguments.keys())}")
+        print(f"  Required arguments: {required_args}")
+        
         if not arguments:
+            print(f"  ❌ No arguments retrieved - using fallback")
             return self._fallback_synthesis(question_analysis, kg, entity_index)
+        
+        # Check if we have all required arguments
+        missing_args = [arg for arg in required_args if arg not in arguments]
+        if missing_args:
+            print(f"  ⚠️  Missing required arguments: {missing_args}")
+            print(f"  Attempting fallback with available args: {list(arguments.keys())}")
+            # Don't fail completely - try to use what we have
+            # return self._fallback_synthesis(question_analysis, kg, entity_index)
         
         # PHASE 4 FIX: If direct_lookup found a percentage, switch to division
         if q_type == 'direct_lookup' and 'numerator' in arguments and 'denominator' in arguments:
@@ -508,6 +531,15 @@ class ProgramSynthesizer:
                     arguments['denominator'] = all_candidates[1] if len(all_candidates) > 1 else all_candidates[0]
                     print(f"  Selected 'numerator': {arguments['numerator']['value']}, 'denominator': {arguments['denominator']['value']}")
         
+        elif qa.question_type == 'comparison':
+            # Need 2 values to compare
+            if len(all_candidates) >= 2:
+                # Try to identify which values to compare based on question context
+                # For "did X exceed Y", find X and Y
+                arguments['value1'] = all_candidates[0]
+                arguments['value2'] = all_candidates[1]
+                print(f"  Comparison: value1={arguments['value1']['value']}, value2={arguments['value2']['value']}")
+        
         elif qa.question_type == 'percentage_change':
             # Need 2 values with temporal ordering: old and new
             if len(qa.temporal_entities) >= 2 and len(all_candidates) >= 2:
@@ -669,20 +701,26 @@ class ProgramSynthesizer:
                                 qa: QuestionAnalysis) -> Tuple[str, Dict]:
         """
         Generate program string từ template và arguments
+        
+        CRITICAL FIX: Must replace #arg_name with #0, #1, #2... (NOT with actual values)
+        The executor needs placeholders like #0, #1 to look up values in the placeholder dict
         """
         program = template
         placeholders = {}
         placeholder_idx = 0
         
-        # Replace placeholders trong template
+        # Replace placeholders trong template với #0, #1, #2...
         for arg_name, arg_data in arguments.items():
             placeholder_pattern = f"#{arg_name}"
             if placeholder_pattern in program:
-                placeholder = f"#{placeholder_idx}"
-                program = program.replace(placeholder_pattern, str(arg_data['value']))
-                placeholders[placeholder] = {
+                # CRITICAL FIX: Replace with #0, #1, ... (not with actual value)
+                numbered_placeholder = f"#{placeholder_idx}"
+                program = program.replace(placeholder_pattern, numbered_placeholder)
+                
+                # Store mapping: #0 -> actual value
+                placeholders[numbered_placeholder] = {
                     'value': arg_data['value'],
-                    'text': arg_data['text'],
+                    'text': arg_data.get('text', str(arg_data['value'])),
                     'node_id': arg_data.get('node_id', ''),
                     'context': arg_data.get('context', '')
                 }
@@ -796,23 +834,89 @@ class ProgramSynthesizer:
                            kg: nx.MultiDiGraph,
                            entity_index: Dict) -> ProgramSynthesisResult:
         """
-        Fallback khi không match template nào
+        IMPROVED FALLBACK: Try harder to generate a program
+        
+        Strategies:
+        1. If numbers mentioned in question -> use them
+        2. If no numbers in question -> extract from KG
+        3. Guess operation based on question keywords
         """
-        # Simple heuristic: nếu có 2 numbers, thử divide
+        print(f"\n[FALLBACK] Attempting fallback synthesis...")
+        
+        # Strategy 1: Use numbers mentioned in question
         if len(qa.numbers_mentioned) >= 2:
+            print(f"  Strategy 1: Using numbers from question: {qa.numbers_mentioned[:2]}")
             return ProgramSynthesisResult(
-                program=f"divide({qa.numbers_mentioned[0]}, {qa.numbers_mentioned[1]})",
+                program=f"divide(#{0}, #{1})",
                 placeholders={
-                    '#0': {'value': qa.numbers_mentioned[0]},
-                    '#1': {'value': qa.numbers_mentioned[1]}
+                    '#0': {'value': qa.numbers_mentioned[0], 'text': str(qa.numbers_mentioned[0])},
+                    '#1': {'value': qa.numbers_mentioned[1], 'text': str(qa.numbers_mentioned[1])}
                 },
-                explanation="Fallback: Using simple division",
+                explanation="Fallback: Using numbers from question with divide",
                 confidence=0.3
             )
         
+        # Strategy 2: Extract any numeric entities from KG
+        all_numeric = []
+        for node_id, node_data in kg.nodes(data=True):
+            if node_data.get('type') == 'entity' and node_data.get('value') is not None:
+                # Filter out dates
+                if node_data.get('label') != 'DATE':
+                    all_numeric.append({
+                        'value': node_data['value'],
+                        'text': node_data.get('text', str(node_data['value'])),
+                        'context': node_data.get('context', '')
+                    })
+        
+        if len(all_numeric) >= 2:
+            print(f"  Strategy 2: Found {len(all_numeric)} numeric entities in KG")
+            # Sort by value, take smallest and largest (often part/whole)
+            sorted_nums = sorted(all_numeric, key=lambda x: x['value'])
+            
+            # Guess operation based on question
+            operation = 'divide'  # Default
+            if any(word in qa.question.lower() for word in ['change', 'increase', 'decrease', 'growth']):
+                operation = 'divide(subtract(#0, #1), #1)'  # percentage change
+                print(f"  Detected change question -> using percentage_change formula")
+                return ProgramSynthesisResult(
+                    program=operation,
+                    placeholders={
+                        '#0': sorted_nums[-1],  # new/larger
+                        '#1': sorted_nums[0]    # old/smaller
+                    },
+                    explanation="Fallback: Detected percentage change from keywords",
+                    confidence=0.4
+                )
+            elif any(word in qa.question.lower() for word in ['percentage', 'percent', 'proportion', 'ratio']):
+                operation = 'divide'
+                print(f"  Detected percentage/ratio question -> using divide")
+            
+            return ProgramSynthesisResult(
+                program=f"{operation}(#0, #1)",
+                placeholders={
+                    '#0': sorted_nums[0],  # smaller (numerator)
+                    '#1': sorted_nums[-1]  # larger (denominator)
+                },
+                explanation=f"Fallback: Using {operation} on KG entities",
+                confidence=0.35
+            )
+        
+        # Strategy 3: If only one number, try direct lookup
+        if len(all_numeric) >= 1:
+            print(f"  Strategy 3: Single value direct lookup")
+            return ProgramSynthesisResult(
+                program="#0",
+                placeholders={
+                    '#0': all_numeric[0]
+                },
+                explanation="Fallback: Direct value lookup",
+                confidence=0.2
+            )
+        
+        print(f"  ❌ All fallback strategies failed - no numeric entities found")
         return ProgramSynthesisResult(
             program="",
             placeholders={},
-            explanation="Could not synthesize program",
+            explanation="Could not synthesize program - no numeric entities",
             confidence=0.0
         )

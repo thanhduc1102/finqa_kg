@@ -272,12 +272,22 @@ class IntelligentFinQAPipeline:
         
         if execution.ground_truth is not None:
             lines.append(f"Ground Truth: {execution.ground_truth}")
-            lines.append(f"Match: {'✓ CORRECT' if execution.is_correct else '✗ INCORRECT'}")
             
-            if not execution.is_correct:
-                error = abs(execution.final_answer - execution.ground_truth)
-                error_pct = error / execution.ground_truth * 100 if execution.ground_truth != 0 else 100
-                lines.append(f"Error: {error:.4f} ({error_pct:.2f}%)")
+            # Handle both numeric and boolean ground truth
+            if isinstance(execution.ground_truth, str):
+                # Boolean comparison (yes/no questions)
+                pred_bool = 'yes' if execution.final_answer > 0.5 else 'no'
+                is_correct = pred_bool == execution.ground_truth.lower()
+                lines.append(f"Predicted: {pred_bool}")
+                lines.append(f"Match: {'✓ CORRECT' if is_correct else '✗ INCORRECT'}")
+            else:
+                # Numeric comparison
+                lines.append(f"Match: {'✓ CORRECT' if execution.is_correct else '✗ INCORRECT'}")
+                
+                if not execution.is_correct:
+                    error = abs(execution.final_answer - execution.ground_truth)
+                    error_pct = error / execution.ground_truth * 100 if execution.ground_truth != 0 else 100
+                    lines.append(f"Error: {error:.4f} ({error_pct:.2f}%)")
         
         lines.append("\n" + "=" * 60)
         

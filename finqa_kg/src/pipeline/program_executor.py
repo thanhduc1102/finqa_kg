@@ -301,6 +301,32 @@ class ProgramExecutor:
                 return 1.0 if args[0] > args[1] else 0.0
             return 0.0
         
+        # NEW: Additional boolean operations
+        elif op == 'less':
+            if len(args) >= 2:
+                return 1.0 if args[0] < args[1] else 0.0
+            return 0.0
+        
+        elif op == 'equal':
+            if len(args) >= 2:
+                return 1.0 if abs(args[0] - args[1]) < 0.01 else 0.0
+            return 0.0
+        
+        elif op == 'not_equal':
+            if len(args) >= 2:
+                return 1.0 if abs(args[0] - args[1]) >= 0.01 else 0.0
+            return 0.0
+        
+        elif op == 'greater_equal':
+            if len(args) >= 2:
+                return 1.0 if args[0] >= args[1] else 0.0
+            return 0.0
+        
+        elif op == 'less_equal':
+            if len(args) >= 2:
+                return 1.0 if args[0] <= args[1] else 0.0
+            return 0.0
+        
         elif op == 'table_sum':
             return sum(args)
         
