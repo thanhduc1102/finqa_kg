@@ -50,16 +50,16 @@ class IntelligentKGBuilder:
         try:
             # Load transformer-based model (tốt nhất)
             self.nlp = spacy.load("en_core_web_trf")
-            print("✓ Loaded en_core_web_trf")
+            print("Loaded en_core_web_trf")
         except:
             try:
                 # Fallback to large model
                 self.nlp = spacy.load("en_core_web_lg")
-                print("✓ Loaded en_core_web_lg")
+                print("Loaded en_core_web_lg")
             except:
                 # Fallback to small model
                 self.nlp = spacy.load("en_core_web_sm")
-                print("⚠ Using en_core_web_sm (less accurate)")
+                print("WARNING: Using en_core_web_sm (less accurate)")
         
         self.entity_counter = 0
         self.node_counter = 0
@@ -120,7 +120,7 @@ class IntelligentKGBuilder:
         if 'qa' in sample and sample['qa']:
             self._process_qa(sample['qa'], kg, doc_id)
         
-        print(f"  ✓ KG built: {kg.number_of_nodes()} nodes, {kg.number_of_edges()} edges")
+        print(f"  OK KG built: {kg.number_of_nodes()} nodes, {kg.number_of_edges()} edges")
         return kg
     
     def _process_text(self, pre_text: List[str], post_text: List[str], 

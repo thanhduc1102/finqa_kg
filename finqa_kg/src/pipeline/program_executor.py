@@ -374,7 +374,7 @@ class ProgramExecutor:
         
         if result.ground_truth is not None:
             explanation.append(f"Ground Truth: {result.ground_truth}")
-            explanation.append(f"Correct: {'✓ YES' if result.is_correct else '✗ NO'}")
+            explanation.append(f"Correct: {'OK YES' if result.is_correct else 'X NO'}")
             if not result.is_correct:
                 error_pct = abs(result.final_answer - result.ground_truth) / result.ground_truth * 100 if result.ground_truth != 0 else 100
                 explanation.append(f"Error: {error_pct:.2f}%")

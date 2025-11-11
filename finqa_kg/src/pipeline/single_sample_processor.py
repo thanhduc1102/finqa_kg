@@ -1,6 +1,6 @@
 """
 Single Sample Processing Pipeline for FinQA
-Xử lý từng sample riêng lẻ: Build KG → Extract Info → Execute Program → Explain
+Xử lý từng sample riêng lẻ: Build KG -> Extract Info -> Execute Program -> Explain
 """
 
 from typing import Dict, Any, List, Optional, Tuple
@@ -310,7 +310,7 @@ class SingleSampleProcessor:
     def _parse_program(self, program_str: str) -> List[Dict[str, Any]]:
         """
         Parse program string thành tokens
-        Ví dụ: "divide(637, const_5)" → [{'op': 'divide', 'args': [637, 5]}]
+        Ví dụ: "divide(637, const_5)" -> [{'op': 'divide', 'args': [637, 5]}]
         """
         tokens = []
         
@@ -476,7 +476,7 @@ class SingleSampleProcessor:
         
         if result.ground_truth is not None:
             explanation += f"Ground Truth: {result.ground_truth}\n"
-            explanation += f"Correct: {'✓' if result.is_correct else '✗'}\n"
+            explanation += f"Correct: {'OK' if result.is_correct else 'X'}\n"
         
         return explanation
     

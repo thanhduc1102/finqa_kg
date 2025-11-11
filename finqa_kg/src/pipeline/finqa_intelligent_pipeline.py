@@ -69,7 +69,7 @@ class IntelligentFinQAPipeline:
         self.program_synthesizer = ProgramSynthesizer()
         self.program_executor = ProgramExecutor()
         
-        print("✓ Pipeline ready!")
+        print("OK Pipeline ready!")
     
     async def process_sample(self, sample: Dict[str, Any]) -> PipelineResult:
         """
@@ -145,12 +145,12 @@ class IntelligentFinQAPipeline:
             )
             
             if exec_result.error:
-                print(f"  ✗ Execution Error: {exec_result.error}")
+                print(f"  X Execution Error: {exec_result.error}")
             else:
                 print(f"  Answer: {exec_result.final_answer}")
                 print(f"  Steps: {len(exec_result.steps)}")
                 if ground_truth is not None:
-                    print(f"  Correct: {'✓ YES' if exec_result.is_correct else '✗ NO'}")
+                    print(f"  Correct: {'OK YES' if exec_result.is_correct else 'X NO'}")
             
             # Step 5: Generate Full Explanation
             print(f"\n[STEP 5/5] Generating Explanation...")
@@ -164,7 +164,7 @@ class IntelligentFinQAPipeline:
             
             # Calculate processing time
             processing_time = time.time() - start_time
-            print(f"\n✓ Processing complete in {processing_time:.2f}s")
+            print(f"\nOK Processing complete in {processing_time:.2f}s")
             
             # Create result
             return PipelineResult(
@@ -187,7 +187,7 @@ class IntelligentFinQAPipeline:
         except Exception as e:
             import traceback
             error_msg = f"Pipeline error: {str(e)}\n{traceback.format_exc()}"
-            print(f"\n✗ {error_msg}")
+            print(f"\nX {error_msg}")
             
             processing_time = time.time() - start_time
             
@@ -279,10 +279,10 @@ class IntelligentFinQAPipeline:
                 pred_bool = 'yes' if execution.final_answer > 0.5 else 'no'
                 is_correct = pred_bool == execution.ground_truth.lower()
                 lines.append(f"Predicted: {pred_bool}")
-                lines.append(f"Match: {'✓ CORRECT' if is_correct else '✗ INCORRECT'}")
+                lines.append(f"Match: {'OK CORRECT' if is_correct else 'X INCORRECT'}")
             else:
                 # Numeric comparison
-                lines.append(f"Match: {'✓ CORRECT' if execution.is_correct else '✗ INCORRECT'}")
+                lines.append(f"Match: {'OK CORRECT' if execution.is_correct else 'X INCORRECT'}")
                 
                 if not execution.is_correct:
                     error = abs(execution.final_answer - execution.ground_truth)

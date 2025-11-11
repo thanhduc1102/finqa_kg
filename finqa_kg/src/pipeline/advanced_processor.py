@@ -361,10 +361,10 @@ COMPUTATION STEPS
         
         for idx, step in enumerate(result.steps, 1):
             explanation += f"\nStep {idx}: {step.operator.upper()}({step.arg1}, {step.arg2})"
-            explanation += f"\n  → Result: {step.result}"
+            explanation += f"\n  -> Result: {step.result}"
             
             if step.source_nodes:
-                explanation += f"\n  → Evidence from KG nodes: {', '.join(step.source_nodes[:3])}"
+                explanation += f"\n  -> Evidence from KG nodes: {', '.join(step.source_nodes[:3])}"
         
         explanation += f"""
 
@@ -376,7 +376,7 @@ Computed Answer: {result.final_answer}
         
         if result.ground_truth is not None:
             explanation += f"Ground Truth:    {result.ground_truth}\n"
-            explanation += f"Match:           {'✓ CORRECT' if result.is_correct else '✗ INCORRECT'}\n"
+            explanation += f"Match:           {'OK CORRECT' if result.is_correct else 'X INCORRECT'}\n"
             
             if not result.is_correct:
                 diff = abs(result.final_answer - result.ground_truth)
