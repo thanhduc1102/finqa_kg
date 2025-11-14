@@ -1,0 +1,464 @@
+{
+  "summary": {
+    "total_samples": 50,
+    "perfect_coverage": 25,
+    "good_coverage": 2,
+    "poor_coverage": 23,
+    "avg_coverage": 81.33809523809524,
+    "total_required": 168,
+    "total_found": 124,
+    "total_missing": 44
+  },
+  "results": [
+    {
+      "sample_idx": 0,
+      "sample_id": "ADI/2009/page_49.pdf-1",
+      "question": "what is the the interest expense in 2009?",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 1,
+      "sample_id": "ABMD/2012/page_75.pdf-1",
+      "question": "during the 2012 year , did the equity awards in which the prescribed performance milestones were achieved exceed the equity award compensation expense for equity granted during the year?",
+      "coverage_percentage": 40.0,
+      "required_count": 10,
+      "found_count": 4,
+      "missing_count": 6
+    },
+    {
+      "sample_idx": 2,
+      "sample_id": "AAL/2018/page_13.pdf-2",
+      "question": "what was the total operating expenses in 2018 in millions",
+      "coverage_percentage": 50.0,
+      "required_count": 2,
+      "found_count": 1,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 3,
+      "sample_id": "INTC/2013/page_71.pdf-4",
+      "question": "what percentage of total cash and investments as of dec . 29 2012 was comprised of available-for-sale investments?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 4,
+      "sample_id": "ETR/2008/page_313.pdf-3",
+      "question": "what is the growth rate in net revenue in 2008?",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 5,
+      "sample_id": "C/2010/page_272.pdf-1",
+      "question": "what was the growth rate of the loans held-for-sale that are carried at locom from 2009 to 2010",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 6,
+      "sample_id": "AMT/2012/page_121.pdf-1",
+      "question": "for acquired customer-related and network location intangibles , what is the expected annual amortization expenses , in millions?",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 7,
+      "sample_id": "GIS/2019/page_45.pdf-1",
+      "question": "in 2019 what was the percent of the net earnings to the net cash provided by operating activities",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 8,
+      "sample_id": "IPG/2009/page_89.pdf-3",
+      "question": "what percentage decrease occurred from 2011-2012 for deferred acquisition payments?",
+      "coverage_percentage": 57.14285714285714,
+      "required_count": 7,
+      "found_count": 4,
+      "missing_count": 3
+    },
+    {
+      "sample_idx": 9,
+      "sample_id": "CDNS/2018/page_32.pdf-2",
+      "question": "how is net change in cash from financing activity affected by the share repurchase during december 20018 , ( in millions ) ?",
+      "coverage_percentage": 40.0,
+      "required_count": 5,
+      "found_count": 2,
+      "missing_count": 3
+    },
+    {
+      "sample_idx": 10,
+      "sample_id": "GIS/2008/page_83.pdf-1",
+      "question": "what is the change in net assets from 2007 to 2008?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 11,
+      "sample_id": "PNC/2012/page_110.pdf-3",
+      "question": "in millions , what is the total of home equity lines of credit?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 12,
+      "sample_id": "AAL/2015/page_74.pdf-1",
+      "question": "what is the percent of the labor-related deemed claim as part of the total reorganization items net in 2013",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 13,
+      "sample_id": "ETR/2008/page_376.pdf-2",
+      "question": "what is the percent change in net revenue between 2007 and 2008?",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 14,
+      "sample_id": "GS/2014/page_47.pdf-3",
+      "question": "in 2013 what percentage of total net revenues for the investing & lending segment were due to debt securities and loans?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 15,
+      "sample_id": "AAL/2014/page_89.pdf-3",
+      "question": "what percentage of total reorganization items net consisted of labor-related deemed claim?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 16,
+      "sample_id": "SWKS/2011/page_82.pdf-1",
+      "question": "what was the percent of the total contractual payment obligations that was associated with operating lease obligations",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 17,
+      "sample_id": "WRK/2018/page_56.pdf-3",
+      "question": "what was the percent of the total long-term debt including current portion excluding capital lease obligations that was due in 2019",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 18,
+      "sample_id": "KHC/2017/page_21.pdf-4",
+      "question": "what percent of total facilities are leased?",
+      "coverage_percentage": 100.0,
+      "required_count": 3,
+      "found_count": 3,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 19,
+      "sample_id": "INTC/2013/page_71.pdf-2",
+      "question": "as part of the proceeds from the clear wire transactions what was the percent of the gain recognized included in the equity investments , net on the consolidated statements of income .",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 20,
+      "sample_id": "JPM/2010/page_144.pdf-2",
+      "question": "on what percent of trading days were there market gains above $ 210 million?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 21,
+      "sample_id": "MMM/2015/page_19.pdf-2",
+      "question": "in february 2016 what was the percent reduction in the board of directors authorized the repurchase to the february 2014",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 22,
+      "sample_id": "GS/2014/page_134.pdf-3",
+      "question": "in millions between 2014 and 2013 , what was the change in net derivative liabilities under bilateral agreements?\\\\n",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 23,
+      "sample_id": "JPM/2003/page_100.pdf-4",
+      "question": "what was the net notional amounts of purchases and sales under sfas 140 in 2003 ( us$ b ) ?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 24,
+      "sample_id": "MAA/2018/page_19.pdf-2",
+      "question": "what is the percentage of consolidated communities among the total communities?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 25,
+      "sample_id": "HII/2018/page_64.pdf-4",
+      "question": "what portion of total backlog is related to ingalls segment?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 26,
+      "sample_id": "STT/2008/page_116.pdf-1",
+      "question": "what is percentage change in total conduit asset from 2007 to 2008?",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 27,
+      "sample_id": "MAS/2017/page_37.pdf-1",
+      "question": "what was the difference in operating profit margins as adjusted from 2015 to 2016?",
+      "coverage_percentage": 0.0,
+      "required_count": 2,
+      "found_count": 0,
+      "missing_count": 2
+    },
+    {
+      "sample_idx": 28,
+      "sample_id": "TSCO/2017/page_68.pdf-3",
+      "question": "what was the total amount lost from the bond authorization to the withdrawn?",
+      "coverage_percentage": 80.0,
+      "required_count": 10,
+      "found_count": 8,
+      "missing_count": 2
+    },
+    {
+      "sample_idx": 29,
+      "sample_id": "CDW/2013/page_106.pdf-2",
+      "question": "what was the average effect , in millions , of the dilutive securities in 2012-14?",
+      "coverage_percentage": 71.42857142857143,
+      "required_count": 7,
+      "found_count": 5,
+      "missing_count": 2
+    },
+    {
+      "sample_idx": 30,
+      "sample_id": "FIS/2016/page_64.pdf-4",
+      "question": "what is the percentage change in total trade receivables?",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 31,
+      "sample_id": "ALLE/2016/page_29.pdf-1",
+      "question": "considering the year 2016 , what is the average revenue?",
+      "coverage_percentage": 100.0,
+      "required_count": 1,
+      "found_count": 1,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 32,
+      "sample_id": "DRE/2016/page_64.pdf-4",
+      "question": "what was the total fees earned in 2016 for management , leasing and construction and development",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 33,
+      "sample_id": "FBHS/2017/page_46.pdf-2",
+      "question": "in 2015 what was the ratio of the defined benefit plan income to defined benefit plan recognition of actuarial losses",
+      "coverage_percentage": 50.0,
+      "required_count": 2,
+      "found_count": 1,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 34,
+      "sample_id": "BKNG/2015/page_38.pdf-2",
+      "question": "what was the percent of the growth of the the priceline group inc . from 2014 to 2015",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 35,
+      "sample_id": "STT/2012/page_42.pdf-4",
+      "question": "what is the cumulative total shareholder return on state street's common stock in 2012 as a percentage of the average shareholder return on common stock in the s&p 500?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 36,
+      "sample_id": "RE/2012/page_31.pdf-4",
+      "question": "as of december 31 , 2012 what was the percentage change in net reserves from 2011",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 37,
+      "sample_id": "FIS/2016/page_64.pdf-3",
+      "question": "what was the percentage change in total trade receivables net from 2015 to 2016?",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 38,
+      "sample_id": "UNP/2014/page_21.pdf-2",
+      "question": "what percent of the share repurchases were in the fourth quarter?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 39,
+      "sample_id": "ADI/2016/page_61.pdf-2",
+      "question": "what is the percentage change in the balance of goodwill from 2015 to 2016?",
+      "coverage_percentage": 75.0,
+      "required_count": 4,
+      "found_count": 3,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 40,
+      "sample_id": "WRK/2019/page_51.pdf-3",
+      "question": "what was the average of the operating lease obligations between 2020 and 2024",
+      "coverage_percentage": 80.0,
+      "required_count": 5,
+      "found_count": 4,
+      "missing_count": 1
+    },
+    {
+      "sample_idx": 41,
+      "sample_id": "HII/2011/page_100.pdf-3",
+      "question": "what is the amount of interest payment incurred from the bonds issued by the mississippi business finance corporation?",
+      "coverage_percentage": 40.0,
+      "required_count": 5,
+      "found_count": 2,
+      "missing_count": 3
+    },
+    {
+      "sample_idx": 42,
+      "sample_id": "JPM/2003/page_51.pdf-1",
+      "question": "in 2003 what was the percent of the total revenues from vies",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 43,
+      "sample_id": "JPM/2012/page_157.pdf-2",
+      "question": "how often did the firm post gains exceeding $ 200 million in 2012?\\\\n",
+      "coverage_percentage": 33.33333333333333,
+      "required_count": 3,
+      "found_count": 1,
+      "missing_count": 2
+    },
+    {
+      "sample_idx": 44,
+      "sample_id": "GS/2016/page_79.pdf-3",
+      "question": "what percentage of total long-term assets under supervision are comprised of fixed income in 2015?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 45,
+      "sample_id": "LLY/2008/page_45.pdf-1",
+      "question": "at january 29 , 2007 what was the percent of the estimated fair value of the goodwill to the total purchase price",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 46,
+      "sample_id": "ANSS/2012/page_92.pdf-1",
+      "question": "what was the average shares granted as part of the long-term incentive plan , in the first quarter of 2012 , 2011 and 2010\\\\n",
+      "coverage_percentage": 50.0,
+      "required_count": 10,
+      "found_count": 5,
+      "missing_count": 5
+    },
+    {
+      "sample_idx": 47,
+      "sample_id": "JPM/2018/page_73.pdf-5",
+      "question": "did jpmorgan chase outperform the kbw bank index?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 48,
+      "sample_id": "IPG/2012/page_89.pdf-1",
+      "question": "what is the mathematical range for tedeemable noncontrolling interests and call options with affiliates from 2013-2017?",
+      "coverage_percentage": 100.0,
+      "required_count": 2,
+      "found_count": 2,
+      "missing_count": 0
+    },
+    {
+      "sample_idx": 49,
+      "sample_id": "WELL/2017/page_116.pdf-3",
+      "question": "for the years ended december 31 2017 , 2016 , and 2015 , what was the average beginning balance in millions?",
+      "coverage_percentage": 100.0,
+      "required_count": 0,
+      "found_count": 0,
+      "missing_count": 0
+    }
+  ]
+}

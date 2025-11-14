@@ -22,6 +22,7 @@ Benefits:
 import networkx as nx
 from typing import Dict, List, Any, Tuple, Optional
 import re
+from collections import defaultdict
 
 
 class StructuredKGBuilder:
@@ -30,15 +31,53 @@ class StructuredKGBuilder:
     def __init__(self):
         self.node_counter = 0
         self.kg = nx.MultiDiGraph()
+        self.value_index = defaultdict(list)  # Fast lookup: value -> [node_ids]
+        self.cell_nodes = []  # Track all cell nodes
         
     def _create_node_id(self, prefix: str) -> str:
         """Generate unique node ID"""
         self.node_counter += 1
         return f"{prefix}_{self.node_counter}"
     
+    async def build_graph(self, 
+                         pre_text: List[str],
+                         post_text: List[str],
+                         table: List[List[str]]) -> nx.MultiDiGraph:
+        """
+        Build structured KG (async interface)
+        
+        Args:
+            pre_text: List of text sentences before table
+            post_text: List of text sentences after table
+            table: 2D table data
+            
+        Returns:
+            Structured knowledge graph
+        """
+        # Reset state
+        self.kg = nx.MultiDiGraph()
+        self.node_counter = 0
+        self.value_index = defaultdict(list)
+        self.cell_nodes = []
+        
+        # Step 1: Build table structure
+        if table:
+            table_node = self._build_table_structure(table)
+        else:
+            table_node = None
+        
+        # Step 2: Add text entities
+        text_entities = self._extract_text_entities(pre_text, post_text)
+        
+        # Step 3: Link text to table
+        if table_node:
+            self._link_text_to_table(text_entities, table_node)
+        
+        return self.kg
+    
     def build_from_sample(self, sample: Dict[str, Any]) -> nx.MultiDiGraph:
         """
-        Build structured KG from FinQA sample
+        Build structured KG from FinQA sample (sync interface)
         
         Args:
             sample: Dict with 'table', 'pre_text', 'post_text', 'qa'
@@ -48,9 +87,11 @@ class StructuredKGBuilder:
         """
         print("\n[StructuredKG] Building...")
         
-        # Reset
+        # Reset state
         self.kg = nx.MultiDiGraph()
         self.node_counter = 0
+        self.value_index = defaultdict(list)
+        self.cell_nodes = []
         
         # Step 1: Build table structure
         table_data = sample.get('table', [])
@@ -73,7 +114,9 @@ class StructuredKGBuilder:
             self._link_text_to_table(text_entities, table_node)
             print(f"  ✓ Linked text to table")
         
-        print(f"  ✓ KG complete: {self.kg.number_of_nodes()} nodes, {self.kg.number_of_edges()} edges")
+        stats = self.get_statistics()
+        print(f"  ✓ KG complete: {stats['total_nodes']} nodes, {stats['total_edges']} edges")
+        print(f"    Indexed values: {stats['indexed_values']}")
         
         return self.kg
     
@@ -148,13 +191,13 @@ class StructuredKGBuilder:
         
         cell_id = self._create_node_id("CELL")
         
-        # Parse value (number or text)
-        numeric_value, label = self._parse_cell_value(cell_value)
+        # Parse value (number or text) with enhanced metadata
+        numeric_value, label, metadata = self._parse_cell_value(cell_value)
         
         # Build context string
         context = f"table[{row_idx},{col_idx}]: column={column_name}, value={cell_value}"
         
-        # Add node
+        # Add node with comprehensive metadata
         self.kg.add_node(
             cell_id,
             type='cell',
@@ -165,8 +208,25 @@ class StructuredKGBuilder:
             raw_value=cell_value,
             value=numeric_value if numeric_value is not None else cell_value,
             is_header=is_header,
-            context=context
+            context=context,
+            # Enhanced metadata
+            is_percent=metadata.get('is_percent', False),
+            is_currency=metadata.get('is_currency', False),
+            is_negative=metadata.get('is_negative', False),
+            original_format=metadata.get('original', cell_value)
         )
+        
+        # Index by value for fast lookup
+        if numeric_value is not None:
+            self.value_index[numeric_value].append(cell_id)
+            
+            # Also index percentage variants (23.6 and 0.236)
+            if metadata.get('is_percent'):
+                # Index both forms
+                self.value_index[numeric_value / 100].append(cell_id)
+        
+        # Track cell nodes
+        self.cell_nodes.append(cell_id)
         
         # Link: Row HAS_CELL Cell
         self.kg.add_edge(row_id, cell_id, relation='HAS_CELL')
@@ -187,40 +247,59 @@ class StructuredKGBuilder:
         
         return cell_id
     
-    def _parse_cell_value(self, cell_value: str) -> Tuple[Optional[float], str]:
+    def _parse_cell_value(self, cell_value: str) -> Tuple[Optional[float], str, Dict[str, Any]]:
         """
-        Parse cell value to extract number and determine label
+        Enhanced parsing to preserve format metadata
         
         Returns:
-            (numeric_value, label)
+            (numeric_value, label, metadata)
         """
         cell_value = cell_value.strip()
+        metadata = {
+            'original': cell_value,
+            'is_percent': False,
+            'is_currency': False,
+            'is_negative': False
+        }
         
         if not cell_value or cell_value == '-' or cell_value.lower() in ['n/a', 'na', '']:
-            return None, 'TEXT'
+            return None, 'TEXT', metadata
+        
+        # Detect format markers
+        metadata['is_percent'] = '%' in cell_value
+        metadata['is_currency'] = '$' in cell_value
         
         # Remove common formatting
         cleaned = cell_value.replace(',', '').replace('$', '').replace('%', '').strip()
         
+        # Handle parentheses (negative numbers)
+        if cleaned.startswith('(') and cleaned.endswith(')'):
+            cleaned = cleaned[1:-1].strip()
+            metadata['is_negative'] = True
+        
         # Try to parse as number
         try:
-            # Handle parentheses (negative numbers)
-            if cleaned.startswith('(') and cleaned.endswith(')'):
-                cleaned = '-' + cleaned[1:-1]
-            
             value = float(cleaned)
             
+            # Apply negative
+            if metadata['is_negative']:
+                value = -value
+            
             # Determine label based on original format
-            if '$' in cell_value:
-                return value, 'MONEY'
-            elif '%' in cell_value:
-                return value, 'PERCENT'
+            if metadata['is_currency']:
+                label = 'MONEY'
+            elif metadata['is_percent']:
+                label = 'PERCENT'
             else:
-                return value, 'NUMBER'
+                label = 'NUMBER'
+            
+            metadata['normalized_value'] = value
+            
+            return value, label, metadata
                 
         except ValueError:
             # Not a number
-            return None, 'TEXT'
+            return None, 'TEXT', metadata
     
     def _normalize_header(self, header: str) -> str:
         """Normalize column header"""
@@ -313,3 +392,116 @@ class StructuredKGBuilder:
             return []
         
         return self.query_cells_by_row(row_idx)
+    
+    def find_nodes_by_value(self, target_value: float, tolerance: float = 0.01) -> List[str]:
+        """
+        Fast O(1) lookup by numeric value using index
+        
+        Args:
+            target_value: The numeric value to search for
+            tolerance: Floating point tolerance for matching
+            
+        Returns:
+            List of node IDs matching the value
+        """
+        matches = []
+        
+        # Exact match from index
+        if target_value in self.value_index:
+            matches.extend(self.value_index[target_value])
+        
+        # Tolerance match (for floating point errors)
+        for value, nodes in self.value_index.items():
+            if value != target_value and abs(value - target_value) < tolerance:
+                matches.extend(nodes)
+        
+        return list(set(matches))  # Remove duplicates
+    
+    def find_cell_by_value_and_column(self, 
+                                      target_value: float,
+                                      column_keywords: List[str],
+                                      tolerance: float = 0.01) -> Optional[str]:
+        """
+        Find cell matching value in a specific column
+        
+        Args:
+            target_value: Numeric value to find
+            column_keywords: Keywords to match in column name
+            tolerance: Floating point tolerance
+            
+        Returns:
+            Node ID of matching cell, or None
+        """
+        # Get candidates by value
+        candidates = self.find_nodes_by_value(target_value, tolerance)
+        
+        # Filter by column
+        for cell_id in candidates:
+            cell_data = self.kg.nodes[cell_id]
+            col_name = cell_data.get('column_name', '').lower()
+            
+            # Check if any keyword matches
+            if any(kw.lower() in col_name for kw in column_keywords):
+                return cell_id
+        
+        return None
+    
+    def find_cell_by_value_and_row_context(self,
+                                           target_value: float,
+                                           row_keywords: List[str],
+                                           tolerance: float = 0.01) -> Optional[str]:
+        """
+        Find cell matching value where row contains certain keywords
+        
+        Args:
+            target_value: Numeric value to find
+            row_keywords: Keywords that should appear in same row
+            tolerance: Floating point tolerance
+            
+        Returns:
+            Node ID of matching cell, or None
+        """
+        # Get candidates by value
+        candidates = self.find_nodes_by_value(target_value, tolerance)
+        
+        # Filter by row context
+        for cell_id in candidates:
+            cell_data = self.kg.nodes[cell_id]
+            row_idx = cell_data.get('row_index')
+            
+            if row_idx is not None:
+                # Get all cells in same row
+                row_cells = self.query_cells_by_row(row_idx)
+                
+                # Build row text
+                row_text = ' '.join(
+                    str(c.get('raw_value', '')) for c in row_cells
+                ).lower()
+                
+                # Check if all keywords present
+                if all(kw.lower() in row_text for kw in row_keywords):
+                    return cell_id
+        
+        return None
+    
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get comprehensive statistics about the KG"""
+        from collections import Counter
+        
+        node_types = Counter()
+        edge_types = Counter()
+        
+        for node_id, node_data in self.kg.nodes(data=True):
+            node_types[node_data.get('type', 'unknown')] += 1
+        
+        for u, v, edge_data in self.kg.edges(data=True):
+            edge_types[edge_data.get('relation', 'unknown')] += 1
+        
+        return {
+            'total_nodes': self.kg.number_of_nodes(),
+            'total_edges': self.kg.number_of_edges(),
+            'node_types': dict(node_types),
+            'edge_types': dict(edge_types),
+            'indexed_values': len(self.value_index),
+            'cell_nodes': len(self.cell_nodes)
+        }

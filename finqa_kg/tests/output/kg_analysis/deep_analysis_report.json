@@ -1,0 +1,253 @@
+{
+  "entity_stats": {
+    "total_samples": 50,
+    "avg_coverage": 100.0,
+    "temporal_count": 5,
+    "missing_count": 0
+  },
+  "relation_stats": {
+    "operation_counts": {
+      "divide": 40,
+      "multiply": 6,
+      "greater": 2,
+      "subtract": 19,
+      "add": 11,
+      "table_average": 2
+    },
+    "complex_relations_count": 5
+  },
+  "table_stats": {
+    "has_table": 50,
+    "table_sizes": [
+      [
+        4,
+        3
+      ],
+      [
+        6,
+        3
+      ],
+      [
+        4,
+        5
+      ],
+      [
+        9,
+        3
+      ],
+      [
+        7,
+        2
+      ],
+      [
+        3,
+        5
+      ],
+      [
+        8,
+        2
+      ],
+      [
+        20,
+        2
+      ],
+      [
+        6,
+        8
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        7,
+        5
+      ],
+      [
+        8,
+        3
+      ],
+      [
+        7,
+        2
+      ],
+      [
+        8,
+        2
+      ],
+      [
+        7,
+        4
+      ],
+      [
+        7,
+        2
+      ],
+      [
+        8,
+        6
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        5,
+        3
+      ],
+      [
+        9,
+        3
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        5,
+        6
+      ],
+      [
+        5,
+        3
+      ],
+      [
+        5,
+        3
+      ],
+      [
+        6,
+        3
+      ],
+      [
+        5,
+        7
+      ],
+      [
+        13,
+        5
+      ],
+      [
+        7,
+        4
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        6,
+        3
+      ],
+      [
+        4,
+        5
+      ],
+      [
+        8,
+        8
+      ],
+      [
+        6,
+        3
+      ],
+      [
+        7,
+        5
+      ],
+      [
+        4,
+        7
+      ],
+      [
+        8,
+        4
+      ],
+      [
+        6,
+        3
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        6,
+        3
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        7,
+        2
+      ],
+      [
+        2,
+        5
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        7,
+        4
+      ],
+      [
+        9,
+        2
+      ],
+      [
+        7,
+        3
+      ],
+      [
+        5,
+        7
+      ],
+      [
+        6,
+        8
+      ],
+      [
+        4,
+        4
+      ]
+    ],
+    "header_types": {
+      "numeric": 37,
+      "text": 13
+    },
+    "multi_row_tables": 49,
+    "table_operations": {
+      "table_average": 2
+    }
+  },
+  "critical_samples": [],
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "area": "Temporal Context",
+      "issue": "5 samples need temporal context",
+      "recommendation": "Add temporal entity extraction: years, quarters, fiscal periods. Link numbers to time periods."
+    },
+    {
+      "priority": "MEDIUM",
+      "area": "Table Topology",
+      "issue": "Table operations detected but topology may be incomplete",
+      "recommendation": "Ensure row-column-cell relationships are explicit. Add column headers as semantic labels."
+    },
+    {
+      "priority": "MEDIUM",
+      "area": "Relation Extraction",
+      "issue": "5 samples have multi-step operations",
+      "recommendation": "Create intermediate result nodes. Chain operations explicitly in KG."
+    }
+  ]
+}
